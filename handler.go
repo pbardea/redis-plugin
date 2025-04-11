@@ -22,7 +22,6 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	}
 
 	zone := plugin.Zones(redis.Zones).Matches(qname)
-	// fmt.Println("zone : ", zone)
 	if zone == "" {
 		return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
 	}
@@ -58,7 +57,7 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 		err := tr.Out(w, r, ch)
 		if err != nil {
-			fmt.Println(err)
+			log.Error(err)
 		}
 		w.Hijack()
 		return dns.RcodeSuccess, nil
@@ -73,6 +72,10 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	extras := make([]dns.RR, 0, 10)
 
 	record := redis.get(location, z)
+	if record == nil {
+		// Record may be nil when the redis read returns an error
+		return redis.errorResponse(state, zone, dns.RcodeServerFailure, nil)
+	}
 
 	switch qtype {
 	case "A":

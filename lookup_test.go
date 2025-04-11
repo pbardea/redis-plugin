@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"testing"
-	"fmt"
 
 	"github.com/coredns/coredns/plugin/pkg/dnstest"
 	"github.com/coredns/coredns/plugin/test"
@@ -16,6 +15,7 @@ var zones = []string {
 }
 
 var lookupEntries = [][][]string {
+	// Example.com
 	{
 		{"@",
 			"{\"soa\":{\"ttl\":300, \"minttl\":100, \"mbox\":\"hostmaster.example.com.\",\"ns\":\"ns1.example.com.\",\"refresh\":44,\"retry\":55,\"expire\":66}}",
@@ -44,6 +44,7 @@ var lookupEntries = [][][]string {
 			"\"aaaa\":[{\"ttl\":300, \"ip\":\"::1\"}]}",
 		},
 	},
+	// Example.net
 	{
 		{"@",
 			"{\"soa\":{\"ttl\":300, \"minttl\":100, \"mbox\":\"hostmaster.example.net.\",\"ns\":\"ns1.example.net.\",\"refresh\":44,\"retry\":55,\"expire\":66}," +
@@ -67,6 +68,17 @@ var lookupEntries = [][][]string {
 		},
 		{"_ssh._tcp.host2",
 			"{\"srv\":[{\"ttl\":300, \"target\":\"tcp.example.com.\",\"port\":123,\"priority\":10,\"weight\":100}]}",
+		},
+	},
+	// Example.test
+	{
+		{"@",
+			"{\"soa\":{\"ttl\":300, \"minttl\":100, \"mbox\":\"hostmaster.example.test.\",\"ns\":\"ns1.example.test.\",\"refresh\":44,\"retry\":55,\"expire\":66}," +
+				"\"ns\":[{\"ttl\":300, \"host\":\"ns1.example.test.\"},{\"ttl\":300, \"host\":\"ns2.example.test.\"}]}",
+		},
+		// Host1's IP field contains invalid JSON
+		{"host1",
+			"{\"a\":[{\"ttl\":300, \"ip\":\"5.5.5.5\"}",
 		},
 	},
 }
@@ -189,6 +201,13 @@ var testCases = [][]test.Case{
 			},
 		},
 	},
+	// Malformed data tests
+	{
+		{
+			Qname: "host1.example.test.", Qtype: dns.TypeA,
+			Rcode: dns.RcodeServerFailure,
+		},
+	},
 }
 
 func newRedisPlugin() *Redis {
@@ -216,7 +235,6 @@ func newRedisPlugin() *Redis {
 // TestAnswer is an integration test which requires a local Redis instance. The test
 // expects an instance on localhost:6379 configured without authentication.
 func TestAnswer(t *testing.T) {
-	fmt.Println("lookup test")
 	r := newRedisPlugin()
 	conn := r.Pool.Get()
 	defer conn.Close()
@@ -226,7 +244,7 @@ func TestAnswer(t *testing.T) {
 		for _, cmd := range lookupEntries[i] {
 			err := r.save(zone, cmd[0], cmd[1])
 			if err != nil {
-				fmt.Println("error in redis", err)
+				t.Error("error in redis", err)
 				t.Fail()
 			}
 		}
