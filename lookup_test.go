@@ -232,6 +232,8 @@ func newRedisPlugin() *Redis {
 	*/
 }
 
+// TestAnswer is an integration test which requires a local Redis instance. The test
+// expects an instance on localhost:6379 configured without authentication.
 func TestAnswer(t *testing.T) {
 	r := newRedisPlugin()
 	conn := r.Pool.Get()
