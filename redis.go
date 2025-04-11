@@ -56,6 +56,9 @@ func (redis *Redis) LoadZones() {
 }
 
 func (redis *Redis) A(name string, z *Zone, record *Record) (answers, extras []dns.RR) {
+	if record == nil {
+		return
+	}
 	for _, a := range record.A {
 		if a.Ip == nil {
 			continue
@@ -70,6 +73,9 @@ func (redis *Redis) A(name string, z *Zone, record *Record) (answers, extras []d
 }
 
 func (redis Redis) AAAA(name string, z *Zone, record *Record) (answers, extras []dns.RR) {
+	if record == nil {
+		return
+	}
 	for _, aaaa := range record.AAAA {
 		if aaaa.Ip == nil {
 			continue
@@ -84,6 +90,9 @@ func (redis Redis) AAAA(name string, z *Zone, record *Record) (answers, extras [
 }
 
 func (redis *Redis) CNAME(name string, z *Zone, record *Record) (answers, extras []dns.RR) {
+	if record == nil {
+		return
+	}
 	for _, cname := range record.CNAME {
 		if len(cname.Host) == 0 {
 			continue
@@ -98,6 +107,9 @@ func (redis *Redis) CNAME(name string, z *Zone, record *Record) (answers, extras
 }
 
 func (redis *Redis) TXT(name string, z *Zone, record *Record) (answers, extras []dns.RR) {
+	if record == nil {
+		return
+	}
 	for _, txt := range record.TXT {
 		if len(txt.Text) == 0 {
 			continue
@@ -112,6 +124,9 @@ func (redis *Redis) TXT(name string, z *Zone, record *Record) (answers, extras [
 }
 
 func (redis *Redis) NS(name string, z *Zone, record *Record) (answers, extras []dns.RR) {
+	if record == nil {
+		return
+	}
 	for _, ns := range record.NS {
 		if len(ns.Host) == 0 {
 			continue
@@ -127,6 +142,9 @@ func (redis *Redis) NS(name string, z *Zone, record *Record) (answers, extras []
 }
 
 func (redis *Redis) MX(name string, z *Zone, record *Record) (answers, extras []dns.RR) {
+	if record == nil {
+		return
+	}
 	for _, mx := range record.MX {
 		if len(mx.Host) == 0 {
 			continue
@@ -143,6 +161,9 @@ func (redis *Redis) MX(name string, z *Zone, record *Record) (answers, extras []
 }
 
 func (redis *Redis) SRV(name string, z *Zone, record *Record) (answers, extras []dns.RR) {
+	if record == nil {
+		return
+	}
 	for _, srv := range record.SRV {
 		if len(srv.Target) == 0 {
 			continue
@@ -161,6 +182,9 @@ func (redis *Redis) SRV(name string, z *Zone, record *Record) (answers, extras [
 }
 
 func (redis *Redis) SOA(name string, z *Zone, record *Record) (answers, extras []dns.RR) {
+	if record == nil {
+		return
+	}
 	r := new(dns.SOA)
 	if record.SOA.Ns == "" {
 		r.Hdr = dns.RR_Header{Name: dns.Fqdn(name), Rrtype: dns.TypeSOA,
@@ -354,7 +378,8 @@ func (redis *Redis) get(key string, z *Zone) *Record {
 		label = key
 	}
 
-	reply, err = conn.Do("HGET", redis.keyPrefix + z.Name + redis.keySuffix, label)
+	redisKey := redis.keyPrefix + z.Name + redis.keySuffix
+	reply, err = conn.Do("HGET", redisKey, label)
 	if err != nil {
 		return nil
 	}
@@ -365,7 +390,7 @@ func (redis *Redis) get(key string, z *Zone) *Record {
 	r := new(Record)
 	err = json.Unmarshal([]byte(val), r)
 	if err != nil {
-		log.Error("parse error : ", val, err)
+		log.Errorf("JSON-decoding error for redis key \"%s\": %v", redisKey, err)
 		return nil
 	}
 	return r
